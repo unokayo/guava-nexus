@@ -1,15 +1,5 @@
 # Guava Nexus v0 — Supabase Schema
 
-## seeds table
-- id: uuid (primary key)
-- seed_id: bigint (unique)  // mirrors on-chain seedId
-- author_address: text
-- version: int
-- parent_seed_id: bigint (nullable)
-- content: text  // the full Seed content
-- created_at: timestamptz
-- updated_at: timestamptz
-
 ## seeds table (identity)
 - seed_id: bigint (primary key)           // mirrors on-chain seedId
 - author_address: text (not null)
