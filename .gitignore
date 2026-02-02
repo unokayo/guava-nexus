@@ -1,0 +1,5 @@
+# Foundry build artifacts
+cache/
+out/
+contracts/cache/
+contracts/out/
