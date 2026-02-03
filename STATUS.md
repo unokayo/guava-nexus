@@ -2,6 +2,7 @@
 
 ## What Guava Nexus v0 is
 Guava Nexus v0 is a **publishing primitive** and **creative authorship tool**.
+Guava Nexus treats versions as narrative episodes, not deprecated states; earlier versions remain semantically vital to later ones.
 
 It lets an author:
 - publish a “Seed” (a piece of work) off-chain,
