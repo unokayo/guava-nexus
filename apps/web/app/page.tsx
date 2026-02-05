@@ -9,20 +9,46 @@ export default function Home() {
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+  
     const trimmed = content.trim();
     if (!trimmed) {
       setError("Please write something before publishing.");
       return;
     }
-    const parentIdNum = parentId.trim() ? parseInt(parentId.trim(), 10) : null;
-    const validParent = parentIdNum !== null && !Number.isNaN(parentIdNum)
-      ? parentIdNum
+  
+    const parentIdNum = parentId.trim()
+      ? parseInt(parentId.trim(), 10)
       : null;
-    const query = validParent != null ? `?parentId=${validParent}` : "";
-    router.push(`/seed/1${query}`);
+  
+    const validParent =
+      parentIdNum !== null && !Number.isNaN(parentIdNum)
+        ? parentIdNum
+        : null;
+  
+    try {
+      const res = await fetch("/api/seeds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: trimmed,
+          parent_seed_id: validParent,
+        }),
+      });
+  
+      const json = await res.json();
+  
+      if (!res.ok) {
+        setError(json?.error ?? "Publish failed.");
+        return;
+      }
+  
+      router.push(`/seed/${json.seed_id}`);
+    } catch (err) {
+      setError("Network error. Try again.");
+    }
   }
 
   return (
