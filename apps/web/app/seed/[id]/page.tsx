@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { CopyLinkButton } from "./CopyLinkButton";
+import { UpdateSeedForm } from "./UpdateSeedForm";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -17,8 +19,8 @@ function getServiceRoleClient() {
 
 export default async function SeedReceiptPage({ params }: Props) {
   const { id } = await params;
-  const seedId = Number(id);
-  if (!Number.isFinite(seedId) || seedId < 1) {
+  const routeSeedId = Number(id);
+  if (!Number.isFinite(routeSeedId) || routeSeedId < 1) {
     notFound();
   }
 
@@ -27,7 +29,7 @@ export default async function SeedReceiptPage({ params }: Props) {
   const { data: seed, error: seedError } = await supabase
     .from("seeds")
     .select("seed_id, parent_seed_id, latest_version, created_at")
-    .eq("seed_id", seedId)
+    .eq("seed_id", routeSeedId)
     .single();
 
   if (seedError || !seed) {
@@ -63,33 +65,63 @@ export default async function SeedReceiptPage({ params }: Props) {
           <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
             Seed published
           </h2>
-          <dl className="mt-6 space-y-4 text-sm">
-            <div>
-              <dt className="text-zinc-500 dark:text-zinc-500">Seed ID</dt>
-              <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">{seed.seed_id}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500 dark:text-zinc-500">Version</dt>
-              <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">v{versionRow.version}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500 dark:text-zinc-500">Timestamp</dt>
-              <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">{createdAt ?? "—"}</dd>
-            </div>
-            {seed.parent_seed_id != null && (
+          <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-zinc-500 dark:text-zinc-500">Derived from</dt>
-                <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">{seed.parent_seed_id}</dd>
+                <dt className="text-zinc-500 dark:text-zinc-500">Seed ID</dt>
+                <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">
+                  {seed.seed_id}
+                </dd>
               </div>
-            )}
-          </dl>
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-500">Version</dt>
+                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                  v{versionRow.version}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-500">
+                  Created
+                </dt>
+                <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">
+                  {createdAt ?? "—"}
+                </dd>
+              </div>
+              {seed.parent_seed_id != null && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Derived from
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">
+                    {seed.parent_seed_id}
+                  </dd>
+                </div>
+              )}
+            </dl>
 
-          {versionRow.content != null && versionRow.content !== "" && (
-            <div className="mt-6">
-              <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">Content</dt>
-              <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
-                {versionRow.content}
-              </dd>
+            <div className="mt-2 md:mt-0">
+              <CopyLinkButton />
+            </div>
+          </div>
+
+          {versionRow.content != null && versionRow.content !== "" && Number.isFinite(seed.seed_id as any) && (
+            <div className="mt-6 space-y-4">
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">
+                  Content
+                </dt>
+                <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
+                  {versionRow.content}
+                </dd>
+              </div>
+
+              <div className="pt-4 border-t border-dashed border-zinc-200 dark:border-zinc-700">
+                <UpdateSeedForm
+                  seedId={Number(seed.seed_id)}
+                  initialContent={versionRow.content ?? ""}
+                  initialVersion={versionRow.version}
+                />
+              </div>
             </div>
           )}
 

@@ -8,10 +8,14 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (isPublishing) {
+      return;
+    }
   
     const trimmed = content.trim();
     if (!trimmed) {
@@ -29,6 +33,8 @@ export default function Home() {
         : null;
   
     try {
+      setIsPublishing(true);
+
       const res = await fetch("/api/seeds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,17 +43,24 @@ export default function Home() {
           parent_seed_id: validParent,
         }),
       });
-  
+
       const json = await res.json();
-  
+
       if (!res.ok) {
-        setError(json?.error ?? "Publish failed.");
+        setError(
+          json?.error ??
+            "Publishing failed. Please review your Seed and try again."
+        );
         return;
       }
-  
+
       router.push(`/seed/${json.seed_id}`);
     } catch (err) {
-      setError("Network error. Try again.");
+      setError(
+        "We couldn’t reach the server. Check your connection and try again."
+      );
+    } finally {
+      setIsPublishing(false);
     }
   }
 
@@ -98,9 +111,10 @@ export default function Home() {
           <div className="flex flex-col gap-3">
             <button
               type="submit"
-              className="w-full rounded border border-zinc-800 bg-zinc-800 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
+              disabled={isPublishing}
+              className="w-full rounded border border-zinc-800 bg-zinc-800 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              Publish Seed
+              {isPublishing ? "Publishing…" : "Publish Seed"}
             </button>
             <p className="text-center text-sm text-zinc-500 dark:text-zinc-500">
               Publishing anchors authorship and version history on-chain.
