@@ -2,17 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
   const [content, setContent] = useState("");
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
+  const [parentIdError, setParentIdError] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
+
+  const charCount = content.length;
+  const hasLengthWarning = charCount > 10000;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setParentIdError("");
     if (isPublishing) {
       return;
     }
@@ -22,15 +28,17 @@ export default function Home() {
       setError("Please write something before publishing.");
       return;
     }
-  
-    const parentIdNum = parentId.trim()
-      ? parseInt(parentId.trim(), 10)
-      : null;
-  
-    const validParent =
-      parentIdNum !== null && !Number.isNaN(parentIdNum)
-        ? parentIdNum
-        : null;
+
+    // Validate parent ID before making request
+    let validParent: number | null = null;
+    if (parentId.trim()) {
+      const parentIdNum = parseInt(parentId.trim(), 10);
+      if (Number.isNaN(parentIdNum) || parentIdNum < 1) {
+        setParentIdError("Parent Seed ID must be a positive integer.");
+        return;
+      }
+      validParent = parentIdNum;
+    }
   
     try {
       setIsPublishing(true);
@@ -54,6 +62,9 @@ export default function Home() {
         return;
       }
 
+      // Clear form state before navigation
+      setContent("");
+      setParentId("");
       router.push(`/seed/${json.seed_id}`);
     } catch (err) {
       setError(
@@ -68,16 +79,36 @@ export default function Home() {
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-[var(--font-geist-sans)]">
       <main className="mx-auto max-w-2xl px-6 py-16">
         <header className="mb-12">
-          <h1 className="text-2xl font-normal tracking-[0.2em] text-zinc-700 dark:text-zinc-400">
-            GUAVA NEXUS v0
-          </h1>
-          <p className="mt-2 text-base text-zinc-500 dark:text-zinc-500">
-            Publish with authorship and lineage
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-normal tracking-[0.2em] text-zinc-700 dark:text-zinc-400">
+                GUAVA NEXUS v0
+              </h1>
+              <p className="mt-2 text-base text-zinc-500 dark:text-zinc-500">
+                Publish with authorship and lineage
+              </p>
+            </div>
+            <Link
+              href="/seeds"
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              Browse seeds →
+            </Link>
+          </div>
         </header>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                {charCount.toLocaleString()} characters
+              </span>
+              {hasLengthWarning && (
+                <span className="text-xs text-amber-600 dark:text-amber-500">
+                  Warning: content is very long ({charCount.toLocaleString()} chars)
+                </span>
+              )}
+            </div>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -95,11 +126,23 @@ export default function Home() {
               id="parentId"
               type="text"
               value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
+              onChange={(e) => {
+                setParentId(e.target.value);
+                setParentIdError("");
+              }}
               placeholder="Parent Seed ID…"
-              className="w-full rounded border border-zinc-200 bg-transparent px-4 py-2 text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+              className={`w-full rounded border bg-transparent px-4 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-200 dark:placeholder:text-zinc-500 ${
+                parentIdError
+                  ? "border-amber-600 focus:border-amber-500 dark:border-amber-500"
+                  : "border-zinc-200 focus:border-zinc-400 dark:border-zinc-700 dark:focus:border-zinc-500"
+              }`}
               aria-label="Parent Seed ID"
             />
+            {parentIdError && (
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                {parentIdError}
+              </p>
+            )}
           </div>
 
           {error && (

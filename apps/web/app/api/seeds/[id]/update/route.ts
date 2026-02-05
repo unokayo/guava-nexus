@@ -67,6 +67,14 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
+    // Validate content length (max 100k chars)
+    if (content.length > 100000) {
+      return NextResponse.json(
+        { error: "Content exceeds maximum length of 100,000 characters." },
+        { status: 413 },
+      );
+    }
+
     // Fetch existing seed
     const { data: seed, error: seedError } = await supabase
       .from("seeds")
@@ -95,6 +103,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
 
     if (versionError) {
+      console.error(
+        `[update seed] Failed to insert seed_versions for seed ${seed.seed_id} version ${nextVersion}:`,
+        versionError,
+      );
       return NextResponse.json(
         { error: versionError.message ?? "Failed to create version." },
         { status: 500 },
@@ -111,8 +123,15 @@ export async function POST(req: Request, { params }: RouteParams) {
       .eq("seed_id", seed.seed_id);
 
     if (updateError) {
+      // Log critical error: version row exists but seeds row not updated
+      console.error(
+        `[update seed] CRITICAL: seed_versions inserted successfully but failed to update seeds table for seed ${seed.seed_id} version ${nextVersion}:`,
+        updateError,
+      );
       return NextResponse.json(
-        { error: updateError.message ?? "Failed to update seed." },
+        {
+          error: `Failed to update seed metadata. Version ${nextVersion} was created but not linked. Contact support with seed_id: ${seed.seed_id}, version: ${nextVersion}. Error: ${updateError.message ?? "Unknown error"}`,
+        },
         { status: 500 },
       );
     }

@@ -80,6 +80,20 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
           <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
             Seed published
           </h2>
+          
+          {!versionNotFound && versionRow.version !== seed.latest_version && (
+            <div className="mt-4 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+              Viewing historical version v{versionRow.version} (latest is{" "}
+              <Link
+                href={`/seed/${seed.seed_id}`}
+                className="font-medium underline hover:no-underline"
+              >
+                v{seed.latest_version}
+              </Link>
+              )
+            </div>
+          )}
+
           <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <dl className="space-y-4 text-sm">
               <div>
@@ -197,12 +211,18 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
             </>
           )}
 
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               href="/"
               className="inline-block rounded border border-zinc-800 bg-zinc-800 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
               Publish another
+            </Link>
+            <Link
+              href="/seeds"
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              All seeds →
             </Link>
           </div>
         </section>
