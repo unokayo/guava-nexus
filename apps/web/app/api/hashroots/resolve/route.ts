@@ -27,11 +27,9 @@ function getServiceRoleClient() {
 }
 
 export async function POST(req: Request) {
-  console.log("[api/hashroots/resolve] hit");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
-    console.log("[api/hashroots/resolve] error: missing env");
     return NextResponse.json(
       { error: "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required." },
       { status: 500 }
@@ -41,7 +39,6 @@ export async function POST(req: Request) {
   try {
     const supabase = getServiceRoleClient();
     const body = await req.json();
-    console.log("[api/hashroots/resolve] after json");
 
     // Extract and validate fields
     const requestId = body?.request_id;
@@ -64,44 +61,39 @@ export async function POST(req: Request) {
     }
 
     // 1) Fetch the request with associated hashname
-    console.log("[api/hashroots/resolve] fetching request:", requestId);
     const { data: request, error: requestError } = await supabase
       .from("hashroot_requests")
       .select(`
-        request_id,
+        id,
         seed_id,
         hashname_id,
         status,
         hashnames!inner(
-          hashname_id,
+          id,
           handle,
           owner_label
         )
       `)
-      .eq("request_id", requestId)
+      .eq("id", requestId)
       .single();
 
     if (requestError || !request) {
-      console.log("[api/hashroots/resolve] request not found");
       return NextResponse.json({ error: "Request not found." }, { status: 404 });
     }
 
     // Extract hashname data (Supabase returns joined data as object or array)
     const hashname = Array.isArray(request.hashnames) ? request.hashnames[0] : request.hashnames;
     if (!hashname) {
-      console.error("[api/hashroots/resolve] hashname join failed");
       return NextResponse.json({ error: "Failed to load hashname data." }, { status: 500 });
     }
 
     // 2) Check if request is already resolved
     if (request.status !== "pending") {
-      console.log("[api/hashroots/resolve] request already resolved:", request.status);
       return NextResponse.json({ error: "Request already resolved." }, { status: 400 });
     }
 
     // 3) TEMP AUTH: Check if resolver_label matches hashname.owner_label
     if (resolverLabel !== hashname.owner_label) {
-      console.log("[api/hashroots/resolve] auth failed: resolver does not match owner");
       return NextResponse.json(
         { error: "Only HashName owner can resolve requests." },
         { status: 403 }
@@ -110,8 +102,6 @@ export async function POST(req: Request) {
 
     // 4) Process action
     if (action === "accept") {
-      console.log("[api/hashroots/resolve] accepting request");
-
       // Insert into seed_hashroots (idempotent - ignore if already exists)
       const { error: attachError } = await supabase
         .from("seed_hashroots")
@@ -125,7 +115,6 @@ export async function POST(req: Request) {
 
       // If duplicate key error, treat as ok (idempotent)
       if (attachError && (attachError as any)?.code !== "23505") {
-        console.error("[api/hashroots/resolve] failed to attach hashroot:", attachError);
         return NextResponse.json(
           { error: attachError.message ?? "Failed to attach hashroot." },
           { status: 500 }
@@ -140,17 +129,15 @@ export async function POST(req: Request) {
           resolved_at: new Date().toISOString(),
           decision_note: note,
         })
-        .eq("request_id", requestId);
+        .eq("id", requestId);
 
       if (updateError) {
-        console.error("[api/hashroots/resolve] failed to update request:", updateError);
         return NextResponse.json(
           { error: updateError.message ?? "Failed to update request status." },
           { status: 500 }
         );
       }
 
-      console.log("[api/hashroots/resolve] accepted successfully");
       return NextResponse.json({
         ok: true,
         status: "accepted",
@@ -159,8 +146,6 @@ export async function POST(req: Request) {
       });
     } else {
       // action === "reject"
-      console.log("[api/hashroots/resolve] rejecting request");
-
       // Update request status to rejected
       const { error: updateError } = await supabase
         .from("hashroot_requests")
@@ -169,17 +154,15 @@ export async function POST(req: Request) {
           resolved_at: new Date().toISOString(),
           decision_note: note,
         })
-        .eq("request_id", requestId);
+        .eq("id", requestId);
 
       if (updateError) {
-        console.error("[api/hashroots/resolve] failed to update request:", updateError);
         return NextResponse.json(
           { error: updateError.message ?? "Failed to update request status." },
           { status: 500 }
         );
       }
 
-      console.log("[api/hashroots/resolve] rejected successfully");
       return NextResponse.json({
         ok: true,
         status: "rejected",
@@ -188,7 +171,6 @@ export async function POST(req: Request) {
       });
     }
   } catch (err: any) {
-    console.log("[api/hashroots/resolve] error", err?.message);
     if (err?.name === "AbortError") {
       return NextResponse.json({ error: "Supabase request timed out" }, { status: 504 });
     }
