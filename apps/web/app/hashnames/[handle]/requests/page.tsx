@@ -83,7 +83,7 @@ export default function HashnameRequestsPage() {
 
       // Remove from list on success
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
-      alert(`Request ${action}ed successfully`);
+      alert(`Request ${action === "accept" ? "approved" : "rejected"} successfully`);
     } catch (err: any) {
       alert(err.message || "Failed to resolve request");
     } finally {
@@ -126,9 +126,20 @@ export default function HashnameRequestsPage() {
         </header>
 
         <section className="rounded border border-zinc-200 bg-zinc-50/50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/30">
-          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-200 mb-6">
-            HashName Inbox: {hashname.handle}
+          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-200 mb-4 font-mono">
+            {hashname.handle}
           </h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            HashName Inbox
+          </p>
+
+          {/* Authority copy */}
+          <div className="mb-6 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+            <p className="font-medium mb-1">You control what associates with this HashName.</p>
+            <p>
+              Approving a Seed makes it part of this HashName&apos;s public semantic graph.
+            </p>
+          </div>
 
           <dl className="space-y-3 text-sm mb-6">
             <div>
@@ -154,7 +165,7 @@ export default function HashnameRequestsPage() {
           {/* Owner label input for auth */}
           <div className="mb-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
             <label htmlFor="ownerInput" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Enter Owner Label to Resolve Requests
+              Enter Owner Label to Approve or Reject Requests
             </label>
             <input
               id="ownerInput"
@@ -166,7 +177,7 @@ export default function HashnameRequestsPage() {
             />
             {!ownerMatches && ownerInput && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
-                Owner label does not match. Accept/Reject actions are disabled.
+                Owner label does not match. Approve/Reject actions are disabled.
               </p>
             )}
           </div>
@@ -174,7 +185,7 @@ export default function HashnameRequestsPage() {
           {/* Pending Requests */}
           <div className="border-t border-zinc-200 dark:border-zinc-700 pt-6">
             <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-              Pending Requests ({requests.length})
+              Pending Association Requests ({requests.length})
             </h3>
             {requests.length === 0 ? (
               <p className="text-xs text-zinc-500 dark:text-zinc-500">No pending requests.</p>
@@ -200,7 +211,7 @@ export default function HashnameRequestsPage() {
                           disabled={!ownerMatches || processingId === req.id}
                           className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-500"
                         >
-                          {processingId === req.id ? "..." : "Accept"}
+                          {processingId === req.id ? "..." : "Approve"}
                         </button>
                         <button
                           onClick={() => handleResolve(req.id, "reject")}
@@ -217,12 +228,18 @@ export default function HashnameRequestsPage() {
             )}
           </div>
 
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href={`/hashnames/${encodeURIComponent(normalizedHandle)}`}
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              ← HashName page
+            </Link>
             <Link
               href="/"
               className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              ← Back to home
+              Home
             </Link>
           </div>
         </section>

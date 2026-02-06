@@ -218,50 +218,52 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
           {/* HashRoots Section */}
           <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
-            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-              HashRoots (Accepted)
+            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              HashRoots (Approved)
             </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+              Approved HashRoots are consented semantic attachments to a HashName.
+            </p>
             {acceptedHashroots && acceptedHashroots.length > 0 ? (
-              <ul className="space-y-1">
+              <div className="flex flex-wrap gap-2">
                 {acceptedHashroots.map((hr) => {
                   const hashname = Array.isArray(hr.hashnames) ? hr.hashnames[0] : hr.hashnames;
                   const handle = hashname?.handle || "unknown";
                   return (
-                    <li key={hr.hashname_id} className="flex items-center justify-between text-xs">
-                      <Link
-                        href={`/hashnames/${encodeURIComponent(handle)}/requests`}
-                        className="font-mono text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline"
-                      >
-                        {handle}
-                      </Link>
-                      <span className="text-zinc-500 dark:text-zinc-500 text-[0.7rem]">
-                        {hr.attached_at ? new Date(hr.attached_at).toISOString().split('T')[0] : '—'}
-                      </span>
-                    </li>
+                    <Link
+                      key={hr.hashname_id}
+                      href={`/hashnames/${encodeURIComponent(handle)}/requests`}
+                      className="inline-flex items-center rounded-full bg-zinc-800 px-3 py-1 text-xs font-mono text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                    >
+                      {handle}
+                    </Link>
                   );
                 })}
-              </ul>
+              </div>
             ) : (
-              <p className="text-xs text-zinc-500 dark:text-zinc-500">No accepted HashRoots yet.</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-500">No approved HashRoots yet.</p>
             )}
           </div>
 
           {/* Pending Requests Section */}
           {pendingRequests && pendingRequests.length > 0 && (
             <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
-              <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+              <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                 HashRoot Requests (Pending)
               </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+                Pending requests require confirmation by the HashName owner.
+              </p>
               <ul className="space-y-2">
                 {pendingRequests.map((req) => {
                   const hashname = Array.isArray(req.hashnames) ? req.hashnames[0] : req.hashnames;
                   const handle = hashname?.handle || "unknown";
                   return (
-                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2">
+                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2 opacity-60">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-zinc-700 dark:text-zinc-300">{handle}</span>
                         <span className="text-zinc-500 dark:text-zinc-500 text-[0.7rem]">
-                          {req.created_at ? new Date(req.created_at).toISOString().split('T')[0] : '—'}
+                          Awaiting approval
                         </span>
                       </div>
                       <div className="mt-1 text-zinc-600 dark:text-zinc-400">
@@ -276,16 +278,19 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
           {/* Rejected Requests Archive */}
           {rejectedRequests && rejectedRequests.length > 0 && (
-            <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
-              <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                HashRoot Archive (Rejected)
-              </h3>
+            <details className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+              <summary className="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 hover:text-zinc-900 dark:hover:text-zinc-100">
+                HashRoot Archive (Rejected) ({rejectedRequests.length})
+              </summary>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3 mt-2">
+                Rejected requests are archived and do not attach to the HashName.
+              </p>
               <ul className="space-y-2">
                 {rejectedRequests.map((req) => {
                   const hashname = Array.isArray(req.hashnames) ? req.hashnames[0] : req.hashnames;
                   const handle = hashname?.handle || "unknown";
                   return (
-                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2">
+                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2 opacity-50">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-zinc-700 dark:text-zinc-300">{handle}</span>
                         <span className="text-zinc-500 dark:text-zinc-500 text-[0.7rem]">
@@ -295,16 +300,20 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                       <div className="mt-1 text-zinc-600 dark:text-zinc-400">
                         Requested by: {req.requester_label || 'anonymous'}
                       </div>
-                      {req.decision_note && (
+                      {req.decision_note ? (
                         <div className="mt-1 text-zinc-500 dark:text-zinc-500 italic">
                           Note: {req.decision_note}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-zinc-500 dark:text-zinc-500">
+                          Rejected
                         </div>
                       )}
                     </li>
                   );
                 })}
               </ul>
-            </div>
+            </details>
           )}
 
           {/* Versions list */}
