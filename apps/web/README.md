@@ -3,8 +3,8 @@
 This directory contains the v0 web interface for Guava Nexus.
 
 Purpose:
-- Publish semantic objects (“Seeds”)
-- Anchor authorship and lineage
+- Publish semantic objects ("Seeds")
+- Create versioned content with preserved history
 - Serve as an early UI scaffold for the semantic memory layer
 
 Status:

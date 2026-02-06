@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Guava Nexus v0",
-  description: "Publish with authorship and lineage",
+  description: "Create versioned Seeds with preserved history",
 };
 
 export default function RootLayout({

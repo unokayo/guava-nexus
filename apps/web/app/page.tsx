@@ -113,7 +113,7 @@ export default function Home() {
                 GUAVA NEXUS v0
               </h1>
               <p className="mt-2 text-base text-zinc-500 dark:text-zinc-500">
-                Publish with authorship and lineage
+                Create versioned Seeds with preserved history
               </p>
             </div>
             <Link
@@ -286,7 +286,7 @@ export default function Home() {
               </p>
             )}
             <p className="text-center text-sm text-zinc-500 dark:text-zinc-500">
-              Publishing anchors authorship and version history on-chain.
+              Publishing creates a versioned Seed with preserved history.
             </p>
           </div>
         </form>
