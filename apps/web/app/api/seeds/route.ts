@@ -50,13 +50,44 @@ export async function POST(req: Request) {
     const contentBody = (body?.content_body ?? body?.content ?? "").toString().trim();
     const title = body?.title ? body.title.toString().trim() : null;
     const narrativeFrame = body?.narrative_frame ? body.narrative_frame.toString().trim() : null;
+    const narrativeBranch = body?.narrative_branch ? body.narrative_branch.toString().trim() : null;
     const rootCategory = body?.root_category ? body.root_category.toString().trim() : null;
     const hashroot = body?.hashroot ? body.hashroot.toString().trim() : null;
     const description = body?.description ? body.description.toString().trim() : null;
     const parentIdRaw = body?.parent_seed_id ?? body?.parentId ?? null;
 
+    // Validate required fields
+    if (!title) {
+      return NextResponse.json({ error: "Title is required." }, { status: 400 });
+    }
+    
     if (!contentBody) {
       return NextResponse.json({ error: "Content body is required." }, { status: 400 });
+    }
+    
+    if (!narrativeFrame) {
+      return NextResponse.json({ error: "Narrative frame is required." }, { status: 400 });
+    }
+    
+    if (!narrativeBranch) {
+      return NextResponse.json({ error: "Narrative branch is required." }, { status: 400 });
+    }
+    
+    if (!rootCategory) {
+      return NextResponse.json({ error: "Root category (Idea Pillar) is required." }, { status: 400 });
+    }
+
+    // Validate narrative_branch belongs to narrative_frame
+    const NARRATIVE_BRANCHES: Record<string, string[]> = {
+      MAD: ["TAMAD XYZ", "Philosophy", "Art"],
+      GUAVA: ["HashChat", "Blockchain", "Dots"],
+    };
+    
+    const validBranches = NARRATIVE_BRANCHES[narrativeFrame];
+    if (!validBranches || !validBranches.includes(narrativeBranch)) {
+      return NextResponse.json({ 
+        error: `Invalid narrative branch "${narrativeBranch}" for narrative frame "${narrativeFrame}".` 
+      }, { status: 400 });
     }
 
     const parentId =
@@ -69,16 +100,18 @@ export async function POST(req: Request) {
     }
 
     // 1) Create seed (identity) - includes identity fields
+    // NOTE: seeds.narrative_branch column must exist in database
     console.log("[api/seeds] before seeds insert");
     const seedInsertData: any = {
       author_address: null,
       parent_seed_id: parentId,
       latest_version: 1,
+      title: title,
+      narrative_frame: narrativeFrame,
+      narrative_branch: narrativeBranch,
+      root_category: rootCategory,
     };
     
-    if (title !== null) seedInsertData.title = title;
-    if (narrativeFrame !== null) seedInsertData.narrative_frame = narrativeFrame;
-    if (rootCategory !== null) seedInsertData.root_category = rootCategory;
     if (hashroot !== null) seedInsertData.hashroot = hashroot;
 
     const { data: seed, error: seedError } = await supabase
