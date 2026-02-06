@@ -30,7 +30,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
   const { data: seed, error: seedError } = await supabase
     .from("seeds")
-    .select("seed_id, parent_seed_id, latest_version, created_at")
+    .select("seed_id, title, narrative_frame, root_category, hashroot, parent_seed_id, latest_version, created_at")
     .eq("seed_id", routeSeedId)
     .single();
 
@@ -77,8 +77,8 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
         </header>
 
         <section className="rounded border border-zinc-200 bg-zinc-50/50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/30">
-          <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
-            Seed published
+          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-200 mb-6">
+            {seed.title || `Untitled Seed #${seed.seed_id}`}
           </h2>
           
           {!versionNotFound && versionRow.version !== seed.latest_version && (
@@ -122,6 +122,36 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                   {createdAt ?? "—"}
                 </dd>
               </div>
+              {seed.narrative_frame && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Narrative Frame
+                  </dt>
+                  <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                    {seed.narrative_frame}
+                  </dd>
+                </div>
+              )}
+              {seed.root_category && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Root Category
+                  </dt>
+                  <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                    {seed.root_category}
+                  </dd>
+                </div>
+              )}
+              {seed.hashroot && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Hashroot
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">
+                    {seed.hashroot}
+                  </dd>
+                </div>
+              )}
               {seed.parent_seed_id != null && (
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-500">
