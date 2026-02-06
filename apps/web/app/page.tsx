@@ -47,7 +47,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: trimmed,
+          content_body: trimmed,
           parent_seed_id: validParent,
         }),
       });

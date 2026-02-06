@@ -45,11 +45,18 @@ export async function POST(req: Request) {
     const supabase = getServiceRoleClient();
     const body = await req.json();
     console.log("[api/seeds] after json");
-    const content = (body?.content ?? "").toString().trim();
+    
+    // Extract fields from body (backward compatible: content → content_body)
+    const contentBody = (body?.content_body ?? body?.content ?? "").toString().trim();
+    const title = body?.title ? body.title.toString().trim() : null;
+    const narrativeFrame = body?.narrative_frame ? body.narrative_frame.toString().trim() : null;
+    const rootCategory = body?.root_category ? body.root_category.toString().trim() : null;
+    const hashroot = body?.hashroot ? body.hashroot.toString().trim() : null;
+    const description = body?.description ? body.description.toString().trim() : null;
     const parentIdRaw = body?.parent_seed_id ?? body?.parentId ?? null;
 
-    if (!content) {
-      return NextResponse.json({ error: "Content is required." }, { status: 400 });
+    if (!contentBody) {
+      return NextResponse.json({ error: "Content body is required." }, { status: 400 });
     }
 
     const parentId =
@@ -61,15 +68,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid parent seed id." }, { status: 400 });
     }
 
-    // 1) Create seed (identity)
+    // 1) Create seed (identity) - includes identity fields
     console.log("[api/seeds] before seeds insert");
+    const seedInsertData: any = {
+      author_address: null,
+      parent_seed_id: parentId,
+      latest_version: 1,
+    };
+    
+    if (title !== null) seedInsertData.title = title;
+    if (narrativeFrame !== null) seedInsertData.narrative_frame = narrativeFrame;
+    if (rootCategory !== null) seedInsertData.root_category = rootCategory;
+    if (hashroot !== null) seedInsertData.hashroot = hashroot;
+
     const { data: seed, error: seedError } = await supabase
       .from("seeds")
-      .insert({
-        author_address: null,
-        parent_seed_id: parentId,
-        latest_version: 1,
-      })
+      .insert(seedInsertData)
       .select("seed_id, parent_seed_id, latest_version")
       .single();
     console.log("[api/seeds] after seeds insert", seedError ? seedError.message : "ok");
@@ -78,15 +92,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: seedError?.message ?? "Failed to create seed." }, { status: 500 });
     }
 
-    // 2) Create version 1 (history)
+    // 2) Create version 1 (history) - includes content_body and description
     console.log("[api/seeds] before seed_versions insert");
+    const versionInsertData: any = {
+      seed_id: seed.seed_id,
+      version: 1,
+      content_body: contentBody,
+    };
+    
+    if (description !== null) versionInsertData.description = description;
+
     const { data: version, error: versionError } = await supabase
       .from("seed_versions")
-      .insert({
-        seed_id: seed.seed_id,
-        version: 1,
-        content,
-      })
+      .insert(versionInsertData)
       .select("id, created_at")
       .single();
     console.log("[api/seeds] after seed_versions insert", versionError ? versionError.message : "ok");

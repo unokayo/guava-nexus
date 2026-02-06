@@ -52,7 +52,7 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
       const res = await fetch(`/api/seeds/${numericSeedId}/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: trimmed }),
+        body: JSON.stringify({ content_body: trimmed }),
       });
 
       const json = await res.json().catch(() => ({}));

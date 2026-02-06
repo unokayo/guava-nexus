@@ -41,7 +41,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
   // Fetch all versions for this seed
   const { data: allVersions, error: versionsError } = await supabase
     .from("seed_versions")
-    .select("id, version, content, created_at")
+    .select("id, version, content_body, description, created_at")
     .eq("seed_id", seed.seed_id)
     .order("version", { ascending: false });
 
@@ -186,14 +186,24 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
             </div>
           ) : (
             <>
-              {versionRow.content != null && versionRow.content !== "" && Number.isFinite(seed.seed_id as any) && (
+              {versionRow.content_body != null && versionRow.content_body !== "" && Number.isFinite(seed.seed_id as any) && (
                 <div className="mt-6 space-y-4">
+                  {versionRow.description && (
+                    <div>
+                      <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">
+                        Description
+                      </dt>
+                      <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
+                        {versionRow.description}
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">
                       Content
                     </dt>
                     <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
-                      {versionRow.content}
+                      {versionRow.content_body}
                     </dd>
                   </div>
 
@@ -201,7 +211,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                     <div className="pt-4 border-t border-dashed border-zinc-200 dark:border-zinc-700">
                       <UpdateSeedForm
                         seedId={Number(seed.seed_id)}
-                        initialContent={versionRow.content ?? ""}
+                        initialContent={versionRow.content_body ?? ""}
                         initialVersion={versionRow.version}
                       />
                     </div>

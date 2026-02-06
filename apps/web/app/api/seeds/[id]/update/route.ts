@@ -58,17 +58,29 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     const body = await req.json();
-    const content = (body?.content ?? "").toString().trim();
-
-    if (!content) {
+    
+    // Check for identity fields - reject if present
+    const identityFields = ['title', 'narrative_frame', 'root_category', 'hashroot', 'parent_seed_id'];
+    const hasIdentityFields = identityFields.some(field => body[field] !== undefined);
+    if (hasIdentityFields) {
       return NextResponse.json(
-        { error: "Content is required." },
+        { error: "Identity fields (title, narrative_frame, root_category, hashroot, parent_seed_id) cannot be updated. Only content_body and description can be updated." },
+        { status: 400 },
+      );
+    }
+
+    const contentBody = (body?.content_body ?? body?.content ?? "").toString().trim();
+    const description = body?.description ? body.description.toString().trim() : null;
+
+    if (!contentBody) {
+      return NextResponse.json(
+        { error: "Content body is required." },
         { status: 400 },
       );
     }
 
     // Validate content length (max 100k chars)
-    if (content.length > 100000) {
+    if (contentBody.length > 100000) {
       return NextResponse.json(
         { error: "Content exceeds maximum length of 100,000 characters." },
         { status: 413 },
@@ -88,19 +100,23 @@ export async function POST(req: Request, { params }: RouteParams) {
         return NextResponse.json({ error: "Seed not found." }, { status: 404 });
       }
       return NextResponse.json(
-        { error: seedError?.message ?? "Failed to load seed." },
+        { error: (seedError as any)?.message ?? "Failed to load seed." },
         { status: 500 },
       );
     }
 
     const nextVersion = (seed.latest_version ?? 0) + 1;
 
-    // Insert new version row
-    const { error: versionError } = await supabase.from("seed_versions").insert({
+    // Insert new version row - only content_body and description
+    const versionInsertData: any = {
       seed_id: seed.seed_id,
       version: nextVersion,
-      content,
-    });
+      content_body: contentBody,
+    };
+    
+    if (description !== null) versionInsertData.description = description;
+
+    const { error: versionError } = await supabase.from("seed_versions").insert(versionInsertData);
 
     if (versionError) {
       console.error(
