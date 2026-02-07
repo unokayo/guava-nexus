@@ -5,6 +5,7 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { UpdateSeedForm } from "./UpdateSeedForm";
 import { CopyProvenanceButton } from "./CopyProvenanceButton";
 import { CopyAddressButton } from "./CopyAddressButton";
+import { RequestHashRootForm } from "./RequestHashRootForm";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -253,6 +254,19 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
             ) : (
               <p className="text-xs text-zinc-500 dark:text-zinc-500">No approved HashRoots yet.</p>
             )}
+          </div>
+
+          {/* Request HashRoot Form */}
+          <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+            <RequestHashRootForm 
+              seedId={seed.seed_id} 
+              onSuccess={() => {
+                // Refresh will happen on client side
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }} 
+            />
           </div>
 
           {/* Pending Requests Section */}

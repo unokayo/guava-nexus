@@ -28,7 +28,6 @@ export default function Home() {
   const [narrativeFrame, setNarrativeFrame] = useState("");
   const [narrativeBranch, setNarrativeBranch] = useState("");
   const [rootCategory, setRootCategory] = useState("");
-  const [hashroot, setHashroot] = useState("");
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
   const [titleError, setTitleError] = useState("");
@@ -148,7 +147,6 @@ export default function Home() {
       };
       
       if (description.trim()) payload.description = description.trim();
-      if (hashroot.trim()) payload.hashroot = hashroot.trim();
       if (validParent !== null) payload.parent_seed_id = validParent;
 
       const res = await fetch("/api/seeds", {
@@ -174,7 +172,6 @@ export default function Home() {
       setNarrativeFrame("");
       setNarrativeBranch("");
       setRootCategory("");
-      setHashroot("");
       setParentId("");
       router.push(`/seed/${json.seed_id}`);
     } catch (err) {
@@ -405,21 +402,6 @@ export default function Home() {
               placeholder="Brief description of this version…"
               className="min-h-[80px] w-full resize-y rounded border border-zinc-200 bg-transparent px-4 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
               aria-label="Version description"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="hashroot" className="mb-1 block text-sm text-zinc-500 dark:text-zinc-500">
-              Hashroot (optional)
-            </label>
-            <input
-              id="hashroot"
-              type="text"
-              value={hashroot}
-              onChange={(e) => setHashroot(e.target.value)}
-              placeholder="Content hash or reference…"
-              className="w-full rounded border border-zinc-200 bg-transparent px-4 py-2 text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
-              aria-label="Hashroot"
             />
           </div>
 
