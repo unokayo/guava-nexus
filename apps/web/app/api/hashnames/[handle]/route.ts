@@ -38,7 +38,7 @@ export async function GET(req: Request, { params }: Props) {
     // Fetch hashname
     const { data: hashname, error: hashnameError } = await supabase
       .from("hashnames")
-      .select("id, handle, owner_label, is_active")
+      .select("id, handle, owner_label, owner_address, is_active")
       .eq("handle", handle)
       .single();
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAuth } from "@/lib/verifyAuth";
 
 const SUPABASE_TIMEOUT_MS = 10_000;
 
@@ -43,8 +44,11 @@ export async function POST(req: Request) {
     // Extract and validate fields
     const requestId = body?.request_id;
     const action = body?.action;
-    const resolverLabel = body?.resolver_label ? body.resolver_label.toString().trim() : "";
     const note = body?.note ? body.note.toString().trim() : null;
+    const address = body?.address;
+    const signature = body?.signature;
+    const nonce = body?.nonce;
+    const timestamp = body?.timestamp;
 
     // Validate request_id
     if (!Number.isFinite(requestId) || requestId < 1) {
@@ -56,9 +60,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Action must be 'accept' or 'reject'." }, { status: 400 });
     }
 
-    if (!resolverLabel) {
-      return NextResponse.json({ error: "Resolver label is required." }, { status: 400 });
+    // Validate authentication fields
+    if (!address || !signature || !nonce || !timestamp) {
+      return NextResponse.json({ 
+        error: "Authentication fields (address, signature, nonce, timestamp) are required." 
+      }, { status: 400 });
     }
+
+    // Verify authentication
+    const authResult = await verifyAuth(
+      address,
+      signature,
+      nonce,
+      timestamp,
+      "resolve_hashroot",
+      requestId
+    );
+
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const verifiedAddress = authResult.address; // normalized (lowercase)
 
     // 1) Fetch the request with associated hashname
     const { data: request, error: requestError } = await supabase
@@ -71,7 +94,7 @@ export async function POST(req: Request) {
         hashnames!inner(
           id,
           handle,
-          owner_label
+          owner_address
         )
       `)
       .eq("id", requestId)
@@ -92,10 +115,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Request already resolved." }, { status: 400 });
     }
 
-    // 3) TEMP AUTH: Check if resolver_label matches hashname.owner_label
-    if (resolverLabel !== hashname.owner_label) {
+    // 3) Check if verified address owns the hashname
+    if (!hashname.owner_address) {
       return NextResponse.json(
-        { error: "Only HashName owner can resolve requests." },
+        { error: "HashName is unclaimed. Claim it first before resolving requests." },
+        { status: 403 }
+      );
+    }
+
+    if (hashname.owner_address !== verifiedAddress) {
+      return NextResponse.json(
+        { error: "Only the HashName owner can resolve requests." },
         { status: 403 }
       );
     }
@@ -108,7 +138,7 @@ export async function POST(req: Request) {
         .insert({
           seed_id: request.seed_id,
           hashname_id: request.hashname_id,
-          attached_by_label: resolverLabel,
+          attached_by_label: verifiedAddress,
         })
         .select()
         .single();
