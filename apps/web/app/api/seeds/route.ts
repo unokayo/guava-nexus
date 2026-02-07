@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAuth } from "@/lib/verifyAuth";
 
 const SUPABASE_TIMEOUT_MS = 10_000;
 
@@ -46,6 +47,28 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("[api/seeds] after json");
     
+    // Extract auth fields
+    const address = body?.address?.toString().toLowerCase();
+    const signature = body?.signature?.toString();
+    const nonce = body?.nonce?.toString();
+    const timestamp = Number(body?.timestamp);
+
+    if (!address || !signature || !nonce || !timestamp) {
+      return NextResponse.json(
+        { error: "Authentication required: address, signature, nonce, and timestamp must be provided" },
+        { status: 401 }
+      );
+    }
+
+    // Verify authentication
+    const authResult = await verifyAuth(address, signature, nonce, timestamp, "create_seed");
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
     // Extract fields from body (backward compatible: content → content_body)
     const contentBody = (body?.content_body ?? body?.content ?? "").toString().trim();
     const title = body?.title ? body.title.toString().trim() : null;
@@ -103,7 +126,7 @@ export async function POST(req: Request) {
     // NOTE: seeds.narrative_branch column must exist in database
     console.log("[api/seeds] before seeds insert");
     const seedInsertData: any = {
-      author_address: null,
+      author_address: authResult.address,
       parent_seed_id: parentId,
       latest_version: 1,
       title: title,

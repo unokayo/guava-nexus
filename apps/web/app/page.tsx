@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useWallet } from "@/lib/useWallet";
+import { useSignature } from "@/lib/useSignature";
 
 // Curated taxonomy
 const IDEA_PILLARS = ["Curiosity", "Creativity", "Sentiment"];
@@ -17,6 +19,9 @@ const NARRATIVE_BRANCHES: Record<string, string[]> = {
 
 export default function Home() {
   const router = useRouter();
+  const { address, isConnecting, error: walletError, connect, disconnect } = useWallet();
+  const { requestSignature, isSigning, error: signError } = useSignature();
+  
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [description, setDescription] = useState("");
@@ -62,7 +67,13 @@ export default function Home() {
     setNarrativeBranchError("");
     setRootCategoryError("");
     setParentIdError("");
-    if (isPublishing) {
+    if (isPublishing || isSigning) {
+      return;
+    }
+
+    // Check wallet connection
+    if (!address) {
+      setError("Please connect your wallet first");
       return;
     }
   
@@ -115,7 +126,20 @@ export default function Home() {
     try {
       setIsPublishing(true);
 
+      // Request signature
+      const signedData = await requestSignature(address, "create_seed");
+      if (!signedData) {
+        setError(signError || "Failed to sign message. Please try again.");
+        return;
+      }
+
       const payload: any = {
+        // Auth fields
+        address: signedData.address,
+        signature: signedData.signature,
+        nonce: signedData.nonce,
+        timestamp: signedData.timestamp,
+        // Seed fields
         title: trimmedTitle,
         content_body: trimmedContent,
         narrative_frame: narrativeFrame,
@@ -183,6 +207,41 @@ export default function Home() {
             </Link>
           </div>
         </header>
+
+        {/* Wallet Connection */}
+        <div className="mb-8 rounded border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
+          {!address ? (
+            <div>
+              <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Connect your wallet to publish Seeds
+              </p>
+              <button
+                type="button"
+                onClick={connect}
+                disabled={isConnecting}
+                className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+              >
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
+              </button>
+              {walletError && (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">{walletError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+              </p>
+              <button
+                type="button"
+                onClick={disconnect}
+                className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div>
@@ -400,14 +459,19 @@ export default function Home() {
           <div className="flex flex-col gap-3">
             <button
               type="submit"
-              disabled={isPublishing || !canPublish}
+              disabled={isPublishing || isSigning || !canPublish || !address}
               className="w-full rounded border border-zinc-800 bg-zinc-800 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {isPublishing ? "Publishing…" : "Publish Seed"}
+              {isSigning ? "Sign to publish..." : isPublishing ? "Publishing…" : address ? "Sign & Publish Seed" : "Connect Wallet"}
             </button>
-            {!canPublish && !isPublishing && (
+            {!canPublish && !isPublishing && !isSigning && (
               <p className="text-center text-xs text-amber-600 dark:text-amber-500">
                 All required fields must be filled to publish
+              </p>
+            )}
+            {!address && (
+              <p className="text-center text-xs text-amber-600 dark:text-amber-500">
+                Connect your wallet to publish
               </p>
             )}
             <p className="text-center text-sm text-zinc-500 dark:text-zinc-500">

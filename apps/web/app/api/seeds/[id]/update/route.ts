@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAuth } from "@/lib/verifyAuth";
 
 const SUPABASE_TIMEOUT_MS = 10_000;
 
@@ -59,6 +60,28 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     const body = await req.json();
     
+    // Extract auth fields
+    const address = body?.address?.toString().toLowerCase();
+    const signature = body?.signature?.toString();
+    const nonce = body?.nonce?.toString();
+    const timestamp = Number(body?.timestamp);
+
+    if (!address || !signature || !nonce || !timestamp) {
+      return NextResponse.json(
+        { error: "Authentication required: address, signature, nonce, and timestamp must be provided" },
+        { status: 401 }
+      );
+    }
+
+    // Verify authentication
+    const authResult = await verifyAuth(address, signature, nonce, timestamp, "update_seed", seedIdNum);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+    
     // Check for identity fields - reject if present
     const identityFields = ['title', 'narrative_frame', 'root_category', 'hashroot', 'parent_seed_id'];
     const hasIdentityFields = identityFields.some(field => body[field] !== undefined);
@@ -90,7 +113,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     // Fetch existing seed
     const { data: seed, error: seedError } = await supabase
       .from("seeds")
-      .select("seed_id, latest_version")
+      .select("seed_id, latest_version, author_address")
       .eq("seed_id", seedIdNum)
       .single();
 
@@ -102,6 +125,14 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json(
         { error: (seedError as any)?.message ?? "Failed to load seed." },
         { status: 500 },
+      );
+    }
+
+    // Enforce author-only updates
+    if (seed.author_address?.toLowerCase() !== authResult.address) {
+      return NextResponse.json(
+        { error: "Only the original author can update this Seed" },
+        { status: 403 }
       );
     }
 

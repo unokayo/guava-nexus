@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useWallet } from "@/lib/useWallet";
+import { useSignature } from "@/lib/useSignature";
 
 type Props = {
   seedId: number;
@@ -12,6 +14,9 @@ type Props = {
 export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { address, isConnecting, error: walletError, connect, disconnect } = useWallet();
+  const { requestSignature, isSigning, error: signError } = useSignature();
+  
   const [content, setContent] = useState(initialContent);
   const [error, setError] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -29,10 +34,16 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (isPublishing) return;
+    if (isPublishing || isSigning) return;
 
     setError(null);
     setMessage(null);
+
+    // Check wallet connection
+    if (!address) {
+      setError("Please connect your wallet first");
+      return;
+    };
 
     const trimmed = content.trim();
     if (!trimmed) {
@@ -49,10 +60,23 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
     try {
       setIsPublishing(true);
 
+      // Request signature
+      const signedData = await requestSignature(address, "update_seed", numericSeedId);
+      if (!signedData) {
+        setError(signError || "Failed to sign message. Please try again.");
+        return;
+      }
+
       const res = await fetch(`/api/seeds/${numericSeedId}/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_body: trimmed }),
+        body: JSON.stringify({ 
+          content_body: trimmed,
+          address: signedData.address,
+          signature: signedData.signature,
+          nonce: signedData.nonce,
+          timestamp: signedData.timestamp,
+        }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -82,6 +106,41 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Wallet Connection */}
+      <div className="rounded border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
+        {!address ? (
+          <div>
+            <p className="mb-2 text-xs text-zinc-600 dark:text-zinc-400">
+              Connect your wallet to update Seeds
+            </p>
+            <button
+              type="button"
+              onClick={connect}
+              disabled={isConnecting}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            >
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
+            </button>
+            {walletError && (
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">{walletError}</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+            </p>
+            <button
+              type="button"
+              onClick={disconnect}
+              className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
+
       <div>
         <label
           htmlFor="update-content"
@@ -113,14 +172,19 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
       <div>
         <button
           type="submit"
-          disabled={isPublishing || isContentUnchanged}
+          disabled={isPublishing || isSigning || isContentUnchanged || !address}
           className="inline-flex w-full justify-center rounded border border-zinc-800 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
-          {isPublishing ? "Publishing…" : "Publish update"}
+          {isSigning ? "Sign to update..." : isPublishing ? "Publishing…" : address ? "Sign & Publish update" : "Connect Wallet"}
         </button>
-        {isContentUnchanged && !isPublishing && (
+        {isContentUnchanged && !isPublishing && !isSigning && (
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
             No changes to publish
+          </p>
+        )}
+        {!address && (
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+            Connect your wallet to update
           </p>
         )}
       </div>
