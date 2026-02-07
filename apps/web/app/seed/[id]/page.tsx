@@ -31,7 +31,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
   const { data: seed, error: seedError } = await supabase
     .from("seeds")
-    .select("seed_id, title, narrative_frame, root_category, hashroot, parent_seed_id, latest_version, created_at, author_address")
+    .select("seed_id, title, narrative_frame, root_category, parent_seed_id, latest_version, created_at, author_address")
     .eq("seed_id", routeSeedId)
     .single();
 
@@ -200,16 +200,6 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                   )}
                 </dd>
               </div>
-              {seed.hashroot && (
-                <div>
-                  <dt className="text-zinc-500 dark:text-zinc-500">
-                    Hashroot
-                  </dt>
-                  <dd className="mt-0.5 font-mono text-zinc-800 dark:text-zinc-200">
-                    {seed.hashroot}
-                  </dd>
-                </div>
-              )}
               {seed.parent_seed_id != null && (
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-500">
