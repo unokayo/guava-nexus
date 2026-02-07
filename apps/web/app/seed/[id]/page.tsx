@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { UpdateSeedForm } from "./UpdateSeedForm";
 import { CopyProvenanceButton } from "./CopyProvenanceButton";
+import { CopyAddressButton } from "./CopyAddressButton";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -30,7 +31,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
   const { data: seed, error: seedError } = await supabase
     .from("seeds")
-    .select("seed_id, title, narrative_frame, root_category, hashroot, parent_seed_id, latest_version, created_at")
+    .select("seed_id, title, narrative_frame, root_category, hashroot, parent_seed_id, latest_version, created_at, author_address")
     .eq("seed_id", routeSeedId)
     .single();
 
@@ -180,6 +181,25 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                   </dd>
                 </div>
               )}
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-500">
+                  Wallet Author
+                </dt>
+                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                  {seed.author_address ? (
+                    <span className="flex items-center">
+                      <span className="font-mono">
+                        {seed.author_address.slice(0, 6)}...{seed.author_address.slice(-4)}
+                      </span>
+                      <CopyAddressButton address={seed.author_address} />
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500 dark:text-zinc-500 italic">
+                      Unknown (pre-auth seed)
+                    </span>
+                  )}
+                </dd>
+              </div>
               {seed.hashroot && (
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-500">
