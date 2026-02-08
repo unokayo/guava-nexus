@@ -14,7 +14,7 @@ type Props = {
 export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address, isConnecting, error: walletError, connect, disconnect } = useWallet();
+  const { address, isConnecting, error: walletError, connect, disconnect, switchAccount } = useWallet();
   const { requestSignature, isSigning, error: signError } = useSignature();
   
   const [content, setContent] = useState(initialContent);
@@ -130,13 +130,23 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
               Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
             </p>
-            <button
-              type="button"
-              onClick={disconnect}
-              className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-            >
-              Disconnect
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={switchAccount}
+                disabled={isConnecting}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+              >
+                Switch
+              </button>
+              <button
+                type="button"
+                onClick={disconnect}
+                className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
         )}
       </div>

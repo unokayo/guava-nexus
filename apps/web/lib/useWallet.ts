@@ -39,8 +39,13 @@ export function useWallet() {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length > 0) {
           setAddress(accounts[0].toLowerCase());
-          // Clear disconnect flag when user switches accounts in MetaMask
-          localStorage.removeItem(DISCONNECT_FLAG_KEY);
+          // CRITICAL: Only clear disconnect flag if user wasn't intentionally disconnected
+          // Don't clear if it's just MetaMask re-announcing the same account
+          const previousFlag = localStorage.getItem(DISCONNECT_FLAG_KEY);
+          if (previousFlag !== "1") {
+            // Only clear if user wasn't intentionally disconnected
+            localStorage.removeItem(DISCONNECT_FLAG_KEY);
+          }
         } else {
           setAddress(null);
         }
@@ -71,17 +76,54 @@ export function useWallet() {
       setIsConnecting(true);
       setError(null);
       
-      // Clear disconnect flag when explicitly connecting
-      localStorage.removeItem(DISCONNECT_FLAG_KEY);
-      
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
+      
       if (accounts.length > 0) {
         setAddress(accounts[0].toLowerCase());
+        // Clear disconnect flag ONLY after successful connection
+        localStorage.removeItem(DISCONNECT_FLAG_KEY);
       }
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const switchAccount = async () => {
+    if (typeof window === "undefined" || typeof window.ethereum === "undefined") {
+      setError("Please install MetaMask or another Web3 wallet");
+      return;
+    }
+
+    try {
+      setIsConnecting(true);
+      setError(null);
+      
+      // Request permissions to force account selection
+      try {
+        await window.ethereum.request({
+          method: "wallet_requestPermissions",
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (permErr: any) {
+        // If permissions request fails, continue anyway
+      }
+      
+      // Now request accounts (should show picker after permissions request)
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      
+      if (accounts.length > 0) {
+        setAddress(accounts[0].toLowerCase());
+        // Clear disconnect flag ONLY after successful account switch
+        localStorage.removeItem(DISCONNECT_FLAG_KEY);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to switch account");
     } finally {
       setIsConnecting(false);
     }
@@ -95,5 +137,5 @@ export function useWallet() {
     }
   };
 
-  return { address, isConnecting, error, connect, disconnect };
+  return { address, isConnecting, error, connect, disconnect, switchAccount };
 }
