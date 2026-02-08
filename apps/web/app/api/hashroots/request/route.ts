@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAuth } from "@/lib/verifyAuth";
 
 const SUPABASE_TIMEOUT_MS = 10_000;
 
@@ -40,14 +41,64 @@ export async function POST(req: Request) {
     const supabase = getServiceRoleClient();
     const body = await req.json();
 
-    // Extract and validate fields
+    // Extract auth fields
+    const address = body?.address?.toString().toLowerCase();
+    const signature = body?.signature?.toString();
+    const nonce = body?.nonce?.toString();
+    const timestamp = Number(body?.timestamp);
     const seedId = body?.seed_id;
     let hashnameHandle = body?.hashname_handle ? body.hashname_handle.toString().trim() : "";
-    const requesterLabel = body?.requester_label ? body.requester_label.toString().trim() : "anonymous";
+
+    // Validate required auth fields
+    if (!address || !signature || !nonce || !timestamp) {
+      return NextResponse.json(
+        { error: "Authentication required: address, signature, nonce, and timestamp must be provided" },
+        { status: 401 }
+      );
+    }
 
     // Validate seed_id
     if (!Number.isFinite(seedId) || seedId < 1) {
       return NextResponse.json({ error: "Valid seed_id is required." }, { status: 400 });
+    }
+
+    // Verify authentication
+    const authResult = await verifyAuth(address, signature, nonce, timestamp, "request_hashroot", seedId);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    // Validate seed exists and get author
+    const { data: seed, error: seedError } = await supabase
+      .from("seeds")
+      .select("seed_id, author_address")
+      .eq("seed_id", seedId)
+      .single();
+
+    if (seedError || !seed) {
+      return NextResponse.json(
+        { error: `Seed #${seedId} does not exist.` },
+        { status: 404 }
+      );
+    }
+
+    // Check for null author_address (legacy seeds)
+    if (!seed.author_address) {
+      return NextResponse.json(
+        { error: "Seed has no author address (legacy seed). Cannot request HashRoot." },
+        { status: 403 }
+      );
+    }
+
+    // Enforce author-only requests
+    if (seed.author_address.toLowerCase() !== authResult.address) {
+      return NextResponse.json(
+        { error: "Only the Seed author can request HashRoot attachment" },
+        { status: 403 }
+      );
     }
 
     // Validate and normalize hashname_handle
@@ -61,18 +112,46 @@ export async function POST(req: Request) {
     }
     hashnameHandle = hashnameHandle.toLowerCase();
 
-    // 1) Lookup hashname by handle
+    // Lookup hashname by handle
     const { data: hashname, error: hashnameError } = await supabase
       .from("hashnames")
       .select("id, handle, is_active")
       .eq("handle", hashnameHandle)
       .single();
 
-    if (hashnameError || !hashname || !hashname.is_active) {
-      return NextResponse.json({ error: "Unknown HashName." }, { status: 400 });
+    if (hashnameError || !hashname) {
+      return NextResponse.json({ error: "HashName not found." }, { status: 404 });
     }
 
-    // 2) Check for existing pending request (idempotent)
+    if (!hashname.is_active) {
+      return NextResponse.json({ error: "HashName is not active." }, { status: 400 });
+    }
+
+    // Check if already approved (seed_hashroots table)
+    const { data: existingAttachment, error: attachmentError } = await supabase
+      .from("seed_hashroots")
+      .select("seed_id, hashname_id")
+      .eq("seed_id", seedId)
+      .eq("hashname_id", hashname.id)
+      .maybeSingle();
+
+    if (attachmentError && (attachmentError as any)?.code !== "PGRST116") {
+      return NextResponse.json(
+        { error: attachmentError.message ?? "Failed to check existing attachment." },
+        { status: 500 }
+      );
+    }
+
+    if (existingAttachment) {
+      return NextResponse.json({
+        ok: true,
+        status: "already_approved",
+        seed_id: seedId,
+        hashname_handle: hashnameHandle,
+      });
+    }
+
+    // Check for existing pending request (idempotent)
     const { data: existingRequest, error: existingError } = await supabase
       .from("hashroot_requests")
       .select("id, status, seed_id")
@@ -81,7 +160,7 @@ export async function POST(req: Request) {
       .eq("status", "pending")
       .maybeSingle();
 
-    if (existingError) {
+    if (existingError && (existingError as any)?.code !== "PGRST116") {
       return NextResponse.json(
         { error: existingError.message ?? "Failed to check existing request." },
         { status: 500 }
@@ -90,6 +169,7 @@ export async function POST(req: Request) {
 
     if (existingRequest) {
       return NextResponse.json({
+        ok: true,
         request_id: existingRequest.id,
         status: existingRequest.status,
         seed_id: existingRequest.seed_id,
@@ -97,13 +177,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3) Insert new request
+    // Insert new request (if rejected previously, allow retry)
     const { data: newRequest, error: insertError } = await supabase
       .from("hashroot_requests")
       .insert({
         seed_id: seedId,
         hashname_id: hashname.id,
-        requester_label: requesterLabel,
+        requester_label: authResult.address,
         status: "pending",
       })
       .select("id, status, seed_id")
@@ -117,6 +197,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
+      ok: true,
       request_id: newRequest.id,
       status: newRequest.status,
       seed_id: newRequest.seed_id,
