@@ -122,6 +122,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid parent seed id." }, { status: 400 });
     }
 
+    // Validate parent seed exists if provided
+    if (parentId !== null) {
+      console.log(`[api/seeds] validating parent_seed_id: ${parentId}`);
+      const { data: parentSeed, error: parentError } = await supabase
+        .from("seeds")
+        .select("seed_id")
+        .eq("seed_id", parentId)
+        .single();
+      
+      if (parentError || !parentSeed) {
+        console.log(`[api/seeds] parent seed validation failed: ${parentError?.message || "not found"}`);
+        return NextResponse.json({ 
+          error: `Parent Seed #${parentId} does not exist.` 
+        }, { status: 400 });
+      }
+      console.log(`[api/seeds] parent seed validated: ${parentId}`);
+    }
+
     // 1) Create seed (identity) - includes identity fields
     // NOTE: seeds.narrative_branch column must exist in database
     console.log("[api/seeds] before seeds insert");
