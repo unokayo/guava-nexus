@@ -33,7 +33,7 @@ export default async function SeedsIndexPage() {
 
   const { data: seeds, error } = await supabase
     .from("seeds")
-    .select("seed_id, parent_seed_id, latest_version, created_at, updated_at")
+    .select("seed_id, title, parent_seed_id, latest_version, created_at, updated_at")
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(50);
@@ -88,13 +88,13 @@ export default async function SeedsIndexPage() {
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-700">
                     <th className="px-6 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">
+                      Title
+                    </th>
+                    <th className="px-6 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">
                       Seed ID
                     </th>
                     <th className="px-6 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">
                       Version
-                    </th>
-                    <th className="px-6 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">
-                      Parent
                     </th>
                     <th className="px-6 py-3 text-left font-medium text-zinc-600 dark:text-zinc-400">
                       Updated
@@ -110,20 +110,21 @@ export default async function SeedsIndexPage() {
                     const displayTime = timestamp
                       ? new Date(timestamp).toISOString()
                       : "—";
+                    const displayTitle = seed.title || `Untitled Seed #${seed.seed_id}`;
 
                     return (
                       <tr
                         key={seed.seed_id}
                         className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
                       >
-                        <td className="px-6 py-4 font-mono text-zinc-800 dark:text-zinc-200">
+                        <td className="px-6 py-4 text-zinc-800 dark:text-zinc-200">
+                          {displayTitle}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-zinc-700 dark:text-zinc-300">
                           {seed.seed_id}
                         </td>
                         <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">
                           v{seed.latest_version}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-zinc-700 dark:text-zinc-300">
-                          {seed.parent_seed_id ?? "—"}
                         </td>
                         <td className="px-6 py-4 font-mono text-xs text-zinc-600 dark:text-zinc-400">
                           {displayTime}

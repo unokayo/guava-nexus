@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAuth } from "@/lib/verifyAuth";
 
 const SUPABASE_TIMEOUT_MS = 10_000;
 
@@ -45,11 +46,71 @@ export async function POST(req: Request) {
     const supabase = getServiceRoleClient();
     const body = await req.json();
     console.log("[api/seeds] after json");
-    const content = (body?.content ?? "").toString().trim();
+    
+    // Extract auth fields
+    const address = body?.address?.toString().toLowerCase();
+    const signature = body?.signature?.toString();
+    const nonce = body?.nonce?.toString();
+    const timestamp = Number(body?.timestamp);
+
+    if (!address || !signature || !nonce || !timestamp) {
+      return NextResponse.json(
+        { error: "Authentication required: address, signature, nonce, and timestamp must be provided" },
+        { status: 401 }
+      );
+    }
+
+    // Verify authentication
+    const authResult = await verifyAuth(address, signature, nonce, timestamp, "create_seed");
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    // Extract fields from body (backward compatible: content → content_body)
+    const contentBody = (body?.content_body ?? body?.content ?? "").toString().trim();
+    const title = body?.title ? body.title.toString().trim() : null;
+    const narrativeFrame = body?.narrative_frame ? body.narrative_frame.toString().trim() : null;
+    const narrativeBranch = body?.narrative_branch ? body.narrative_branch.toString().trim() : null;
+    const rootCategory = body?.root_category ? body.root_category.toString().trim() : null;
+    const hashroot = body?.hashroot ? body.hashroot.toString().trim() : null;
+    const description = body?.description ? body.description.toString().trim() : null;
     const parentIdRaw = body?.parent_seed_id ?? body?.parentId ?? null;
 
-    if (!content) {
-      return NextResponse.json({ error: "Content is required." }, { status: 400 });
+    // Validate required fields
+    if (!title) {
+      return NextResponse.json({ error: "Title is required." }, { status: 400 });
+    }
+    
+    if (!contentBody) {
+      return NextResponse.json({ error: "Content body is required." }, { status: 400 });
+    }
+    
+    if (!narrativeFrame) {
+      return NextResponse.json({ error: "Narrative frame is required." }, { status: 400 });
+    }
+    
+    if (!narrativeBranch) {
+      return NextResponse.json({ error: "Narrative branch is required." }, { status: 400 });
+    }
+    
+    if (!rootCategory) {
+      return NextResponse.json({ error: "Root category (Idea Pillar) is required." }, { status: 400 });
+    }
+
+    // Validate narrative_branch belongs to narrative_frame
+    const NARRATIVE_BRANCHES: Record<string, string[]> = {
+      MAD: ["TAMAD XYZ", "Philosophy", "Art"],
+      GUAVA: ["HashChat", "Blockchain", "Dots"],
+    };
+    
+    const validBranches = NARRATIVE_BRANCHES[narrativeFrame];
+    if (!validBranches || !validBranches.includes(narrativeBranch)) {
+      return NextResponse.json({ 
+        error: `Invalid narrative branch "${narrativeBranch}" for narrative frame "${narrativeFrame}".` 
+      }, { status: 400 });
     }
 
     const parentId =
@@ -61,15 +122,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid parent seed id." }, { status: 400 });
     }
 
-    // 1) Create seed (identity)
+    // Validate parent seed exists if provided
+    if (parentId !== null) {
+      console.log(`[api/seeds] validating parent_seed_id: ${parentId}`);
+      const { data: parentSeed, error: parentError } = await supabase
+        .from("seeds")
+        .select("seed_id")
+        .eq("seed_id", parentId)
+        .single();
+      
+      if (parentError || !parentSeed) {
+        console.log(`[api/seeds] parent seed validation failed: ${parentError?.message || "not found"}`);
+        return NextResponse.json({ 
+          error: `Parent Seed #${parentId} does not exist.` 
+        }, { status: 400 });
+      }
+      console.log(`[api/seeds] parent seed validated: ${parentId}`);
+    }
+
+    // 1) Create seed (identity) - includes identity fields
+    // NOTE: seeds.narrative_branch column must exist in database
     console.log("[api/seeds] before seeds insert");
+    const seedInsertData: any = {
+      author_address: authResult.address,
+      parent_seed_id: parentId,
+      latest_version: 1,
+      title: title,
+      narrative_frame: narrativeFrame,
+      narrative_branch: narrativeBranch,
+      root_category: rootCategory,
+    };
+    
+    if (hashroot !== null) seedInsertData.hashroot = hashroot;
+
     const { data: seed, error: seedError } = await supabase
       .from("seeds")
-      .insert({
-        author_address: null,
-        parent_seed_id: parentId,
-        latest_version: 1,
-      })
+      .insert(seedInsertData)
       .select("seed_id, parent_seed_id, latest_version")
       .single();
     console.log("[api/seeds] after seeds insert", seedError ? seedError.message : "ok");
@@ -78,15 +166,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: seedError?.message ?? "Failed to create seed." }, { status: 500 });
     }
 
-    // 2) Create version 1 (history)
+    // 2) Create version 1 (history) - includes content_body and description
     console.log("[api/seeds] before seed_versions insert");
+    const versionInsertData: any = {
+      seed_id: seed.seed_id,
+      version: 1,
+      content_body: contentBody,
+    };
+    
+    if (description !== null) versionInsertData.description = description;
+
     const { data: version, error: versionError } = await supabase
       .from("seed_versions")
-      .insert({
-        seed_id: seed.seed_id,
-        version: 1,
-        content,
-      })
+      .insert(versionInsertData)
       .select("id, created_at")
       .single();
     console.log("[api/seeds] after seed_versions insert", versionError ? versionError.message : "ok");

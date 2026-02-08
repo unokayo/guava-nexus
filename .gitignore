@@ -3,3 +3,6 @@ cache/
 out/
 contracts/cache/
 contracts/out/
+
+# Private narrative & philosophy (local only)
+.private/

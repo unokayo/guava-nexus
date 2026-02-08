@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { UpdateSeedForm } from "./UpdateSeedForm";
 import { CopyProvenanceButton } from "./CopyProvenanceButton";
+import { CopyAddressButton } from "./CopyAddressButton";
+import { RequestHashRootForm } from "./RequestHashRootForm";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -30,7 +32,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
 
   const { data: seed, error: seedError } = await supabase
     .from("seeds")
-    .select("seed_id, parent_seed_id, latest_version, created_at")
+    .select("seed_id, title, narrative_frame, root_category, parent_seed_id, latest_version, created_at, author_address")
     .eq("seed_id", routeSeedId)
     .single();
 
@@ -41,13 +43,51 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
   // Fetch all versions for this seed
   const { data: allVersions, error: versionsError } = await supabase
     .from("seed_versions")
-    .select("id, version, content, created_at")
+    .select("id, version, content_body, description, created_at")
     .eq("seed_id", seed.seed_id)
     .order("version", { ascending: false });
 
   if (versionsError || !allVersions || allVersions.length === 0) {
     notFound();
   }
+
+  // Fetch accepted HashRoots
+  const { data: acceptedHashroots } = await supabase
+    .from("seed_hashroots")
+    .select(`
+      hashname_id,
+      attached_at,
+      hashnames!inner(handle)
+    `)
+    .eq("seed_id", seed.seed_id)
+    .order("attached_at", { ascending: false });
+
+  // Fetch pending HashRoot requests
+  const { data: pendingRequests } = await supabase
+    .from("hashroot_requests")
+    .select(`
+      id,
+      requester_label,
+      created_at,
+      hashnames!inner(handle)
+    `)
+    .eq("seed_id", seed.seed_id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  // Fetch rejected HashRoot requests (Archive)
+  const { data: rejectedRequests } = await supabase
+    .from("hashroot_requests")
+    .select(`
+      id,
+      requester_label,
+      decision_note,
+      resolved_at,
+      hashnames!inner(handle)
+    `)
+    .eq("seed_id", seed.seed_id)
+    .eq("status", "rejected")
+    .order("resolved_at", { ascending: false });
 
   // Determine which version to display
   const query = await searchParams;
@@ -77,8 +117,8 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
         </header>
 
         <section className="rounded border border-zinc-200 bg-zinc-50/50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/30">
-          <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
-            Seed published
+          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-200 mb-6">
+            {seed.title || `Untitled Seed #${seed.seed_id}`}
           </h2>
           
           {!versionNotFound && versionRow.version !== seed.latest_version && (
@@ -122,6 +162,45 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                   {createdAt ?? "—"}
                 </dd>
               </div>
+              {seed.narrative_frame && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Narrative Frame
+                  </dt>
+                  <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                    {seed.narrative_frame}
+                  </dd>
+                </div>
+              )}
+              {seed.root_category && (
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-500">
+                    Root Category
+                  </dt>
+                  <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                    {seed.root_category}
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-zinc-500 dark:text-zinc-500">
+                  Wallet Author
+                </dt>
+                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+                  {seed.author_address ? (
+                    <span className="flex items-center">
+                      <span className="font-mono">
+                        {seed.author_address.slice(0, 6)}...{seed.author_address.slice(-4)}
+                      </span>
+                      <CopyAddressButton address={seed.author_address} />
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500 dark:text-zinc-500 italic">
+                      Unknown (pre-auth seed)
+                    </span>
+                  )}
+                </dd>
+              </div>
               {seed.parent_seed_id != null && (
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-500">
@@ -147,6 +226,114 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
               )}
             </div>
           </div>
+
+          {/* HashRoots Section */}
+          <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              HashRoots (Approved)
+            </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+              Approved HashRoots are consented semantic attachments to a HashName.
+            </p>
+            {acceptedHashroots && acceptedHashroots.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {acceptedHashroots.map((hr) => {
+                  const hashname = Array.isArray(hr.hashnames) ? hr.hashnames[0] : hr.hashnames;
+                  const handle = hashname?.handle || "unknown";
+                  return (
+                    <Link
+                      key={hr.hashname_id}
+                      href={`/hashnames/${encodeURIComponent(handle)}/requests`}
+                      className="inline-flex items-center rounded-full bg-zinc-800 px-3 py-1 text-xs font-mono text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                    >
+                      {handle}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-500 dark:text-zinc-500">No approved HashRoots yet.</p>
+            )}
+          </div>
+
+          {/* Request HashRoot Form */}
+          <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+            <RequestHashRootForm 
+              seedId={seed.seed_id}
+              authorAddress={seed.author_address}
+            />
+          </div>
+
+          {/* Pending Requests Section */}
+          {pendingRequests && pendingRequests.length > 0 && (
+            <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+              <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                HashRoot Requests (Pending)
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+                Pending requests require confirmation by the HashName owner.
+              </p>
+              <ul className="space-y-2">
+                {pendingRequests.map((req) => {
+                  const hashname = Array.isArray(req.hashnames) ? req.hashnames[0] : req.hashnames;
+                  const handle = hashname?.handle || "unknown";
+                  return (
+                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2 opacity-60">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">{handle}</span>
+                        <span className="text-zinc-500 dark:text-zinc-500 text-[0.7rem]">
+                          Awaiting approval
+                        </span>
+                      </div>
+                      <div className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        Requested by: {req.requester_label || 'anonymous'}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Rejected Requests Archive */}
+          {rejectedRequests && rejectedRequests.length > 0 && (
+            <details className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
+              <summary className="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 hover:text-zinc-900 dark:hover:text-zinc-100">
+                HashRoot Archive (Rejected) ({rejectedRequests.length})
+              </summary>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3 mt-2">
+                Rejected requests are archived and do not attach to the HashName.
+              </p>
+              <ul className="space-y-2">
+                {rejectedRequests.map((req) => {
+                  const hashname = Array.isArray(req.hashnames) ? req.hashnames[0] : req.hashnames;
+                  const handle = hashname?.handle || "unknown";
+                  return (
+                    <li key={req.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 rounded px-3 py-2 opacity-50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">{handle}</span>
+                        <span className="text-zinc-500 dark:text-zinc-500 text-[0.7rem]">
+                          {req.resolved_at ? new Date(req.resolved_at).toISOString().split('T')[0] : '—'}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        Requested by: {req.requester_label || 'anonymous'}
+                      </div>
+                      {req.decision_note ? (
+                        <div className="mt-1 text-zinc-500 dark:text-zinc-500 italic">
+                          Note: {req.decision_note}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-zinc-500 dark:text-zinc-500">
+                          Rejected
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          )}
 
           {/* Versions list */}
           <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
@@ -186,14 +373,24 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
             </div>
           ) : (
             <>
-              {versionRow.content != null && versionRow.content !== "" && Number.isFinite(seed.seed_id as any) && (
+              {versionRow.content_body != null && versionRow.content_body !== "" && Number.isFinite(seed.seed_id as any) && (
                 <div className="mt-6 space-y-4">
+                  {versionRow.description && (
+                    <div>
+                      <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">
+                        Description
+                      </dt>
+                      <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
+                        {versionRow.description}
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-zinc-500 dark:text-zinc-500 text-sm mb-2 block">
                       Content
                     </dt>
                     <dd className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
-                      {versionRow.content}
+                      {versionRow.content_body}
                     </dd>
                   </div>
 
@@ -201,7 +398,7 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
                     <div className="pt-4 border-t border-dashed border-zinc-200 dark:border-zinc-700">
                       <UpdateSeedForm
                         seedId={Number(seed.seed_id)}
-                        initialContent={versionRow.content ?? ""}
+                        initialContent={versionRow.content_body ?? ""}
                         initialVersion={versionRow.version}
                       />
                     </div>
