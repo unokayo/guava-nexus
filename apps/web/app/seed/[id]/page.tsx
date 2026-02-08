@@ -259,13 +259,8 @@ export default async function SeedReceiptPage({ params, searchParams }: Props) {
           {/* Request HashRoot Form */}
           <div className="mt-6 border-t border-zinc-200 dark:border-zinc-700 pt-6">
             <RequestHashRootForm 
-              seedId={seed.seed_id} 
-              onSuccess={() => {
-                // Refresh will happen on client side
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }} 
+              seedId={seed.seed_id}
+              authorAddress={seed.author_address}
             />
           </div>
 
