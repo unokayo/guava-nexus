@@ -134,6 +134,16 @@ export function useWallet() {
     // Set flag to prevent auto-connect on next mount
     if (typeof window !== "undefined") {
       localStorage.setItem(DISCONNECT_FLAG_KEY, "1");
+      
+      // Best-effort: Try to revoke permissions (not all wallets support this)
+      if (window.ethereum?.request) {
+        window.ethereum.request({
+          method: "wallet_revokePermissions",
+          params: [{ eth_accounts: {} }],
+        }).catch(() => {
+          // Silently fail - this is optional
+        });
+      }
     }
   };
 

@@ -249,7 +249,10 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                To switch accounts, you may need to select a different account in MetaMask
+                Disconnect clears Guava Nexus only. To fully disconnect, open MetaMask → Connected Sites → Remove this site.
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                Switch Account may require selecting an account in MetaMask extension.
               </p>
             </div>
           )}

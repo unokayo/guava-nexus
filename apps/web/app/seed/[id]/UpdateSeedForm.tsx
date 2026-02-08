@@ -126,27 +126,32 @@ export function UpdateSeedForm({ seedId, initialContent, initialVersion }: Props
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={switchAccount}
-                disabled={isConnecting}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
-              >
-                Switch
-              </button>
-              <button
-                type="button"
-                onClick={disconnect}
-                className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-              >
-                Disconnect
-              </button>
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={switchAccount}
+                  disabled={isConnecting}
+                  className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                >
+                  Switch
+                </button>
+                <button
+                  type="button"
+                  onClick={disconnect}
+                  className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                >
+                  Disconnect
+                </button>
+              </div>
             </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+              App-level disconnect. To fully disconnect: MetaMask → Connected Sites.
+            </p>
           </div>
         )}
       </div>
