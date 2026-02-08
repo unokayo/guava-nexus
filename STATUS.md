@@ -88,15 +88,38 @@ v0 is intentionally minimal: it proves **authorship, versioning, and consent-bas
 
 ---
 
+---
+
+## Phase B Lock
+
+**Phase B is now complete and locked.**
+
+No further Phase B scope changes will be accepted. All Phase B features are implemented, tested, and documented. The system is ready for demo and user feedback.
+
+What Phase B includes:
+- Wallet-based seed creation and authorship
+- Author-only updates with signature verification
+- HashName claiming and ownership
+- HashRoot consent-based association (request → approve/reject)
+- Nonce-based replay protection
+- Parent seed validation and lineage tracking
+
+What Phase B intentionally excludes (deferred to later phases):
+- On-chain anchoring
+- Transaction hash storage
+- Blockchain-verified timestamps
+- Smart contract integration
+
+---
+
 ## Next Steps
 
-**Phase B Hardening (Optional):**
-- Add API integration tests (Vitest/Jest)
-- Improve error handling for nonce fetch failures
-- Add nonce cleanup cron job
-- Shared TypeScript types between API and frontend
+**Phase C-lite (UX Polish Only):**
+- Improve HashName Owner Inbox UI
+- Add consistent navigation and empty states
+- Reusable wallet connection component
 
-**Phase C Boundary:**
+**Phase C (On-Chain Anchoring):**
 When ready to anchor on-chain:
 1. Wire API routes to call `SeedRegistry.sol` after DB operations
 2. Store transaction hashes in database

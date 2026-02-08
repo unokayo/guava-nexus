@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@/lib/useWallet";
 import { useSignature } from "@/lib/useSignature";
+import { WalletBar } from "@/components/WalletBar";
 
 type HashnameData = {
   id: number;
@@ -26,7 +27,7 @@ export default function HashnamePage() {
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
 
-  const { address, connect, isConnecting } = useWallet();
+  const { address } = useWallet();
   const { requestSignature, isSigning } = useSignature();
 
   // Normalize handle: ensure starts with "#", lowercase
@@ -139,9 +140,17 @@ export default function HashnamePage() {
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-[var(--font-geist-sans)]">
       <main className="mx-auto max-w-2xl px-6 py-16">
         <header className="mb-12">
-          <h1 className="text-2xl font-normal tracking-[0.2em] text-zinc-700 dark:text-zinc-400">
-            GUAVA NEXUS v0
-          </h1>
+          <div className="flex items-start justify-between">
+            <h1 className="text-2xl font-normal tracking-[0.2em] text-zinc-700 dark:text-zinc-400">
+              GUAVA NEXUS v0
+            </h1>
+            <Link
+              href="/"
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              ← Home
+            </Link>
+          </div>
         </header>
 
         <section className="rounded border border-zinc-200 bg-zinc-50/50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/30">
@@ -191,18 +200,9 @@ export default function HashnamePage() {
           </dl>
 
           {/* Wallet Connection Section */}
-          {!address && (
-            <div className="mb-6 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              <p className="font-medium mb-2">Connect your wallet to claim this HashName</p>
-              <button
-                onClick={connect}
-                disabled={isConnecting}
-                className="rounded border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-300 disabled:text-zinc-500 dark:border-zinc-200 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-500"
-              >
-                {isConnecting ? "Connecting..." : "Connect Wallet"}
-              </button>
-            </div>
-          )}
+          <div className="mb-6">
+            <WalletBar />
+          </div>
 
           {/* Ownership Actions */}
           {isOwner && (
@@ -233,7 +233,7 @@ export default function HashnamePage() {
           </div>
 
           {/* Actions */}
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-zinc-200 dark:border-zinc-700 pt-6">
             {isOwner && (
               <Link
                 href={`/hashnames/${encodeURIComponent(hashname.handle)}/requests`}
@@ -246,7 +246,7 @@ export default function HashnamePage() {
               href="/"
               className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              ← Back to home
+              Home
             </Link>
           </div>
         </section>

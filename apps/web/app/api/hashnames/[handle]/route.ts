@@ -46,10 +46,16 @@ export async function GET(req: Request, { params }: Props) {
       return NextResponse.json({ error: "HashName not found." }, { status: 404 });
     }
 
-    // Fetch pending requests for this hashname
+    // Fetch pending requests for this hashname with seed titles
     const { data: pendingRequests, error: requestsError } = await supabase
       .from("hashroot_requests")
-      .select("id, seed_id, requester_label, created_at")
+      .select(`
+        id, 
+        seed_id, 
+        requester_label, 
+        created_at,
+        seeds!inner(title)
+      `)
       .eq("hashname_id", hashname.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
